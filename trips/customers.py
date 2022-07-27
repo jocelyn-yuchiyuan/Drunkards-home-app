@@ -68,27 +68,34 @@ class Drunk_Customer(AsyncJsonWebsocketConsumer):
             await self.create_trip(content)
         elif message_type == 'echo.message':
             await self.echo_message(content)
-    async def create_trip(self, message):
+        elif message_type == 'update.trip': # new
+            await self.update_trip(content)
+    async def update_trip(self, message):
         data = message.get('data')
-        trip = await self._create_trip(data)
+        trip = await self._update_trip(data)
+        trip_id = f'{trip.id}'
         trip_data = await self._get_trip_data(trip)
 
-    # Send rider requests to all drivers.
-        await self.channel_layer.group_send(group='drivers', message={
-            'type': 'echo.message',
-            'data': trip_data
-        })
+        # Send update to rider.
+        await self.channel_layer.group_send(
+            group=trip_id,
+            message={
+                'type': 'echo.message',
+                'data': trip_data,
+            }
+        )
 
-    # Add rider to trip group.
-        await self.channel_layer.group_add( # new
-            group=f'{trip.id}',
+    # Add driver to the trip group.
+        await self.channel_layer.group_add(
+            group=trip_id,
             channel=self.channel_name
         )
 
         await self.send_json({
             'type': 'echo.message',
-            'data': trip_data,
+            'data': trip_data
         })
+
     async def create_trip(self, message):
         data = message.get('data')
         trip = await self._create_trip(data)
@@ -126,3 +133,9 @@ class Drunk_Customer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _get_user_group(self, user):
         return user.groups.first().name
+    @database_sync_to_async
+    def _update_trip(self, data):
+        instance = Trip.objects.get(id=data.get('id'))
+        serializer = TripSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        return serializer.update(instance, serializer.validated_data)
