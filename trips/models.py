@@ -4,14 +4,14 @@ from django.db import models
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.shortcuts import reverse
+from django.conf import settings
 
 
 class User(AbstractUser):
-    class User(AbstractUser):
-        @property
-        def group(self):
-            groups = self.groups.all()
-            return groups[0].name if groups else None
+    @property
+    def group(self):
+        groups = self.groups.all()
+        return groups[0].name if groups else None
 
 
 class Trip(models.Model): 
@@ -33,6 +33,20 @@ class Trip(models.Model):
     drop_off_address = models.CharField(max_length=255)
     status = models.CharField(
         max_length=20, choices=STATUSES, default=REQUESTED)
+    driver = models.ForeignKey( 
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.DO_NOTHING,
+        related_name='trips_as_driver'
+    )
+    rider = models.ForeignKey( 
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.DO_NOTHING,
+        related_name='trips_as_rider'
+    )
 
     def __str__(self):
         return f'{self.id}'
