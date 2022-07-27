@@ -7,7 +7,11 @@ from django.shortcuts import reverse
 
 
 class User(AbstractUser):
-    pass
+    class User(AbstractUser):
+        @property
+        def group(self):
+            groups = self.groups.all()
+            return groups[0].name if groups else None
 
 
 class Trip(models.Model): 
